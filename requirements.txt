@@ -1,0 +1,8 @@
+IPython
+numpy
+langchain_chroma
+streamlit
+trulens-eval
+trulens-instrument-langchain
+trulens-providers-openai
+langchain-upstage

@@ -1,0 +1,197 @@
+import os, json
+from collections import Counter
+
+import numpy as np
+import pandas as pd
+import requests
+from PIL import Image
+import keras
+from keras.preprocessing import image
+
+import chromadb
+from chromadb.utils.data_loaders import ImageLoader
+from chromadb.utils.embedding_functions import OpenCLIPEmbeddingFunction
+from langchain.agents import tool
+from langchain.pydantic_v1 import BaseModel, Field
+from langchain_community.tools.tavily_search import TavilySearchResults
+
+from collections import Counter
+
+from RetrievalGraph import RetrievalGraph
+
+
+class InsectCropPlan(BaseModel):
+    insect: str = Field(..., description="Insect to address")
+    crop: str = Field(..., description="Crop to protect")
+
+class ImagePath(BaseModel):
+    image_path: str = Field(..., description="Path of the image to check for disease")
+
+from typing import TypeVar
+ImageBin = TypeVar('PIL.Image.Image')
+
+class PImage(BaseModel):
+    img: ImageBin = Field(..., description="Image in binary form of PIL.Image.Image")
+
+class Location(BaseModel):
+    city: str = Field(..., description="The city, town, or village name to get the weather for")
+
+
+class ImageNumpy(BaseModel):
+    image_np: str = Field(..., description="A numpy array of the image")
+
+
+class CropName(BaseModel):
+    crop_name: str = Field(..., description="Name of the field crop to get information for")
+
+
+class CropQuestion(BaseModel):
+    crop_question: str = Field(..., description="Question on the crop")
+
+class Guidance(BaseModel):
+    topic: str = Field(description="Tppic heading for the topic in your response. Example 'Watering plan'")
+    guidance: str = Field(description="Actual Guidance to give in your response for the topic")
+
+
+weather_api_key = os.getenv("WEATHER_API_KEY")
+#image_loader = ImageLoader()
+#multimodal_ef = OpenCLIPEmbeddingFunction()
+#multimodal_db_insect = chroma_client_insect.get_or_create_collection(name="multimodal_db", embedding_function=multimodal_ef, data_loader=image_loader)
+#multimodal_db_leaf = chroma_client_leaf.get_or_create_collection(name="multimodal_db", embedding_function=multimodal_ef, data_loader=image_loader)
+
+reconstructed_model_soybean_leaf = keras.models.load_model("models/leaf.soybean.mobilenetv3large.keras")
+reconstructed_model_cotton_leaf = keras.models.load_model("models/leaf.cotton.mobilenetv3large.keras")
+reconstructed_model_corn_leaf = keras.models.load_model("models/leaf.corn.mobilenetv3large.keras")
+reconstructed_model_insect = keras.models.load_model("models/insect.mobilenetv3large.keras")
+
+retrieval_graph = RetrievalGraph()
+
+#@tool(args_schema=PImage)
+def predict_soybean_leaf_disease(img):
+    """ Tell whether the soybean leaf has a disease or is healthy """
+    #img = image.load_img(image_path, target_size=(224, 224))
+    x = image.img_to_array(img)
+    x = np.expand_dims(x, axis=0)
+    classes = reconstructed_model_soybean_leaf.predict(x)
+    class_labels = ["Caterpillar", "Diabrotica speciosa", "Healthy"]
+    return class_labels[np.argmax(classes)]
+
+#@tool(args_schema=PImage)
+def predict_cotton_leaf_disease(img):
+    """ Tell whether the cotton leaf has a disease or is healthy """
+    #img = image.load_img(image_path, target_size=(224, 224))
+    x = image.img_to_array(img)
+    x = np.expand_dims(x, axis=0)
+    classes = reconstructed_model_cotton_leaf.predict(x)
+    class_labels = ["Bacterial blight", "Curl Virus", "Fussarium Wilt", "Healthy"]
+    return class_labels[np.argmax(classes)]
+
+#@tool(args_schema=PImage)
+def predict_corn_leaf_disease(img):
+    """ Tell whether the corn leaf has a disease or is healthy """
+    #img = image.load_img(image_path, target_size=(224, 224))
+    print("Predicting corn leaf disease", img, type(img))
+    x = image.img_to_array(img)
+    x = np.expand_dims(x, axis=0)
+    classes = reconstructed_model_corn_leaf.predict(x)
+    class_labels = ["Blight", "Common Rust", "Gray Leaf Spot","Healthy"]
+    return class_labels[np.argmax(classes)]
+
+#@tool(args_schema=PImage)
+def predict_insect(img):
+    """ Find out the insect in the image """
+
+    print("Predicting insect", img, type(img))
+    print(type(image.load_img("./images/moth.jpg", target_size=(224, 224))))
+    x = image.img_to_array(img)
+    x = np.expand_dims(x, axis=0)
+    classes = reconstructed_model_insect.predict(x)
+    class_labels = ["Ant", "Bee", "Beetle", "Caterpillar", "Earthworm", "Earwig", "Grasshopper", "Moth", "Slug", "Snail", "Wasp", "Weevil"]
+    return class_labels[np.argmax(classes)]
+
+
+@tool(args_schema=Location)
+def get_weather_data(city):
+    """
+    Get the weather data for a given location.
+    """
+    url = f"http://api.weatherapi.com/v1/forecast.json?key={weather_api_key}&q={city}&days=7"
+    response = requests.get(url)
+    return response.json()
+
+@tool
+def calculate_water_needed(field_moisture, desired_moisture, rainfall_expected, field_area):
+    """
+    Calculate the amount of water needed to reach the desired moisture level.
+
+    Args:
+        field_moisture (float): Current moisture level of the field (0-100%)
+        desired_moisture (float): Desired moisture level of the field (0-100%)
+        rainfall_expected (float): Expected rainfall in the next 24 hours (inches)
+        field_area (float): Area of the field (acres)
+
+    Returns:
+        float: Amount of water needed to reach the desired moisture level (gallons)
+    """
+
+    # Convert rainfall from inches to gallons per acre
+    rainfall_gallons = rainfall_expected * 27154 * field_area
+
+    # Calculate the amount of water needed to reach the desired moisture level
+    water_needed = ((desired_moisture - field_moisture) / 100) * field_area * 27154 - rainfall_gallons
+
+    return water_needed
+
+@tool
+def increase_ph(current_ph, desired_ph, soil_area_acres):
+    """
+    Calculate the amount of lime needed to increase soil pH.
+
+    Args:
+        current_ph (float): Current soil pH
+        desired_ph (float): Desired soil pH
+        soil_area_acres (float): Area of the soil in acres
+
+    Returns:
+        float: Amount of lime needed (tons)
+    """
+    ph_increase = desired_ph - current_ph
+    lime_needed = ph_increase * soil_area_acres * 4840 / 1000 * 40
+    return lime_needed
+
+@tool
+def decrease_ph(current_ph, desired_ph, soil_area_acres):
+    """
+    Calculate the amount of aluminum sulfate needed to decrease soil pH.
+
+    Args:
+        current_ph (float): Current soil pH
+        desired_ph (float): Desired soil pH
+        soil_area_acres (float): Area of the soil in acres
+        soil_weight_tons_per_acre (float): Weight of the soil in tons per acre (typically 2 million pounds or 1000 tons per acre)
+    Returns:
+        float: Amount of aluminum sulfate needed (pounds)
+    """
+    ph_decrease = current_ph - desired_ph
+    aluminum_sulfate_needed = ph_decrease * soil_area_acres * 43560 / 10 * 2
+    return aluminum_sulfate_needed
+
+@tool(args_schema=CropQuestion)
+def get_crop_info(crop_question):
+    """
+    Ask a question about the crop that the farmer is growing.
+    """
+    return retrieval_graph.invoke(crop_question)
+
+@tool(args_schema=CropQuestion)
+def fertilizer_to_add(crop_question):
+    """
+    Get the recommended fertilizer for a specific crop.
+    """
+    return retrieval_graph.invoke(crop_question)
+
+
+@tool(args_schema=CropQuestion)
+def tackle_insect(crop_question):
+    """Get insights on how to address insects for a gvien crop"""
+    return retrieval_graph.invoke(crop_question)
