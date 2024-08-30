@@ -35,7 +35,8 @@ class PImage(BaseModel):
     img: ImageBin = Field(..., description="Image in binary form of PIL.Image.Image")
 
 class Location(BaseModel):
-    city: str = Field(..., description="The city, town, or village name to get the weather for")
+    latitude: str = Field(..., description="The latitude of the city, town, or village name to get the weather for")
+    longitude: str = Field(..., description="The longitude of the city, town, or village name to get the weather for")
 
 
 class ImageNumpy(BaseModel):
@@ -112,11 +113,12 @@ def predict_insect(img):
 
 
 @tool(args_schema=Location)
-def get_weather_data(city):
+def get_weather_data(latitude, longitude):
     """
-    Get the weather data for a given location.
+    Get the weather data for a given location latitude and longitude.
     """
-    url = f"http://api.weatherapi.com/v1/forecast.json?key={weather_api_key}&q={city}&days=7"
+    latlong = latitude+","+longitude
+    url = f"http://api.weatherapi.com/v1/forecast.json?key={weather_api_key}&q={latlong}&days=7"
     response = requests.get(url)
     return response.json()
 

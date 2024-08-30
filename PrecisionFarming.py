@@ -73,7 +73,8 @@ class PrecisionFarming:
             You are an Expert framing assistant. You will be given the following information
             Soil PH: {soil_ph}
             Soil Moisture: {soil_moisture}
-            Location: {location}
+            Latitude: {latitude}
+            Longitude: {longitude}
             Area (acres): {area_acres}
             Crop: {crop}
             Insect Name: {insect}
@@ -115,7 +116,7 @@ class PrecisionFarming:
                 explain your reasoning for the timing. Provide reference to the weather and moisture levels and you used it in your reasoning
         """
 
-    def get_insights(self, soil_ph = 6.5, soil_moisture = 30, location = "Concord, NC",
+    def get_insights(self, soil_ph = 6.5, soil_moisture = 30, latitude = 35.41, longitude= -80.58,
                      area_acres = 10, crop = "Corn", insect = None, leaf = None):
 
         print("inset-->", insect, type(insect))
@@ -134,7 +135,8 @@ class PrecisionFarming:
                                     insect=insect,
                                     soil_ph=soil_ph,
                                     soil_moisture=soil_moisture,
-                                    location=location,
+                                    latitude=latitude,
+                                    longitude=longitude,
                                     area_acres=area_acres,
                                     crop=crop)
         abot = Agent(self.model, self.tool_list, system=prompt)
