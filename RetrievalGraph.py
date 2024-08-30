@@ -17,6 +17,7 @@ from trulens.instrument.langchain import WithFeedbackFilterDocuments
 from trulens.core import Feedback
 from trulens.providers.openai import OpenAI
 from trulens.instrument.langchain import TruChain
+from langchain.load import dumps, loads
 
 class GradeDocuments(BaseModel):
     """Binary score for relevance check on retrieved documents."""
@@ -43,9 +44,7 @@ class GraphState(TypedDict):
 
 
 class RetrievalGraph:
-    guard = Guard()
-    guard.name = 'ChatBotGuard'
-    #guard.use_many(ProfanityFree(), ToxicLanguage())
+
 
     def __init__(self):
         # Initialize Tavily
@@ -129,6 +128,7 @@ class RetrievalGraph:
             self.not_grounded,
             {
                 "notGrounded": "transform_query",
+                "notSure": "transform_query",
                 "grounded": END
             }
         )
@@ -192,23 +192,47 @@ class RetrievalGraph:
         better_question = self.question_rewriter.invoke({"question": question})
         return {"documents": documents, "question": better_question}
 
+    def get_unique_union(self, documents: list[list]):
+        """ Unique union of retrieved docs """
+        # Flatten list of lists, and convert each Document to string
+        flattened_docs = [dumps(doc) for sublist in documents for doc in sublist]
+        # Get unique documents
+        unique_docs = list(set(flattened_docs))
+        # Return
+        return [loads(doc) for doc in unique_docs]
+
     def web_search(self, state):
-        """
-        Web search based on the re-phrased question.
-
-        Args:
-            state (dict): The current graph state
-
-        Returns:
-            state (dict): Updates documents key with appended web results
-        """
 
         question = state["question"]
         documents = state["documents"]
 
+        template = """You are an AI language model assistant. Your task is to break down the larger question
+        you get into smaller subquestions to do a web search on. 
+        
+        Provide a list of subquestions that can be used to search the web for more information.
+        
+        Original question: {question}"""
+        prompt_sub_q = ChatPromptTemplate.from_template(template)
+
+        from langchain_core.output_parsers import StrOutputParser
+        from langchain_openai import ChatOpenAI
+
+        generate_queries = (
+                prompt_sub_q
+                | ChatOpenAI(temperature=0)
+                | StrOutputParser()
+                | (lambda x: x.split("\n"))
+        )
+
+        retrieval_chain = generate_queries | self.web_search_tool.map() | self.get_unique_union
+        docs = retrieval_chain.invoke({"question": question})
+
         # Web search
-        docs = self.web_search_tool.invoke({"query": question})
-        web_results = "\n".join([d["content"] for d in docs])
+        print("Web search for: ", question)
+        #docs = self.web_search_tool.invoke({"query": question})
+        print(type(docs), docs)
+
+        web_results = "\n".join([d["content"] for d in docs if isinstance(d, dict)])
         web_results = Document(page_content=web_results)
         documents.append(web_results)
 

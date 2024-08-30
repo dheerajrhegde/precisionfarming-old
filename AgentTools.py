@@ -14,6 +14,7 @@ from chromadb.utils.embedding_functions import OpenCLIPEmbeddingFunction
 from langchain.agents import tool
 from langchain.pydantic_v1 import BaseModel, Field
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_core.prompts import PromptTemplate
 
 from collections import Counter
 
@@ -190,8 +191,79 @@ def fertilizer_to_add(crop_question):
     """
     return retrieval_graph.invoke(crop_question)
 
+class CropDisease(BaseModel):
+    crop: str = Field(..., description="Crop to protect")
+    disease_name: str = Field(..., description="Name of the disease")
+    moisture: float = Field(..., description="Soil moisture level")
+    weather: str = Field(..., description="Weather forecast")
+    irrigation_plan: str = Field(..., description="Irrigation plan recommendation")
 
-@tool(args_schema=CropQuestion)
-def tackle_insect(crop_question):
-    """Get insights on how to address insects for a gvien crop"""
-    return retrieval_graph.invoke(crop_question)
+
+@tool(args_schema=CropDisease)
+def tackle_disease(crop, disease_name, moisture, weather, irrigation_plan):
+    """Get insights on how to address disease for a given crop"""
+
+    prompt_template = PromptTemplate.from_template(
+        """
+        You are an agricultural disease management expert is a professional with specialized knowledge in entomology, 
+        plant pathology, and crop protection.
+        
+        A farmer has come to you with a disease effeecting his/her crop. 
+        The farmer is growing {crop}. 
+        The farmer has noticed {disease} disease on the crop.
+        His farm's current and next few days weather is {weather}.
+        His farm's soil moisture is {moisture}. And his irrigation plan is {irrigation_plan}. 
+        
+        You need to provide the farmer with the following information:
+        1. Insights on the disease, how it effects the plant and its yield
+        2. What causes the disease and how to prevent it
+        3. Now that the disease is present, how to remediate it? Include specific informaiton
+            - On what pesticides to use, when to apply given the weather, moisture and irrigation plan
+                - explain your reasoning for the timing. Provide reference to the weather and moisture levels and you used it in your reasoning
+                - give dates when the pesticides should be applied
+            - Where to get the pesticides from
+        """
+    )
+    question = prompt_template.format(crop=crop, disease=disease_name, moisture=moisture, weather=weather, irrigation_plan=irrigation_plan)
+
+    print("Tackling disease", question)
+    return retrieval_graph.invoke(question)
+
+class CropInsect(BaseModel):
+    crop: str = Field(..., description="Crop to protect")
+    insect_name: str = Field(..., description="Name of the disease")
+    moisture: float = Field(..., description="Soil moisture level")
+    weather: str = Field(..., description="Weather forecast")
+    irrigation_plan: str = Field(..., description="Irrigation plan recommendation")
+
+@tool(args_schema=CropInsect)
+def tackle_insect(crop, insect_name, moisture, weather, irrigation_plan):
+    """Get insights on how to address insect for a given crop"""
+
+    prompt_template = PromptTemplate.from_template(
+        """
+        You are an agricultural pest management expert is a professional with specialized knowledge in entomology, 
+        plant pathology, and crop protection.
+
+        A farmer has come to you with a disease effeecting his/her crop. 
+        The farmer is growing {crop}. 
+        The farmer has noticed {insect_name} insect on the crop.
+        His farm's current and next few days weather is {weather}.
+        His farm's soil moisture is {moisture}. And his irrigation plan is {irrigation_plan}. 
+
+        You need to provide the farmer with the following information:
+        1. Insights on the insect, how it effects the plant and its yield
+        2. What factors support insect habitation in your crop field
+        3. Now that the insects are present, how to remediate it? Include specific informaiton
+            - On what pesticides to use, when to apply given the weather, moisture and irrigation plan
+                - explain your reasoning for the timing. Provide reference to the weather and moisture levels and you used it in your reasoning
+                - give dates when the pesticides should be applied
+            - Where to get the pesticides from
+                - Give the websites where the farmer can buy the pesticides
+        """
+    )
+    question = prompt_template.format(crop=crop, insect_name=insect_name, moisture=moisture, weather=weather,
+                                      irrigation_plan=irrigation_plan)
+
+    print("Tackling insect", question)
+    return retrieval_graph.invoke(question)

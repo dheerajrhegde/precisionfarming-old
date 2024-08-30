@@ -67,7 +67,7 @@ class PrecisionFarming:
     def __init__(self):
         self.model = ChatOpenAI(model='gpt-4o', openai_api_key=os.getenv("OPENAI_API_KEY"), )
         self.tool_list = [tools.decrease_ph, tools.get_weather_data,
-                     tools.get_crop_info, tools.calculate_water_needed, tools.tackle_insect]
+                     tools.get_crop_info, tools.calculate_water_needed, tools.tackle_insect, tools.tackle_disease]
         self.model.bind_tools(self.tool_list)
         self.prompt = """
             You are an Expert framing assistant. You will be given the following information
@@ -86,7 +86,6 @@ class PrecisionFarming:
             4. Identify the action needed to get the PH to the desired level/range
             5. Identify the action needed to get the moisture to the desired level/range
             6. Identify the required fertilizers needed for the crop. Find the moisture level and weather condition ideal for spraying fertilizers
-            
         
             Based on tool call results, provide a precision farming assessment in below format. Please do not use any other 
             information other than what was provided by the tools. Do not halunicate. Base your response on the data provided.
@@ -103,11 +102,17 @@ class PrecisionFarming:
                 Recommend when to fertilize the field
                 Call out the weather conditions you have considered while recommending the fertilizing time
             Insect Control Plan:
+                Get insights on how to remediate the insect infestation effecting the crop. Take into account the crop, the insect, weather, watering plan
                 Tell the farmer what insect is in the image
                 Tell the farmer what action to take to control the insect
+                Explain your rationale for the action plan. What data did you consider to come up with the plan?
+                explain your reasoning for the timing. Provide reference to the weather and moisture levels and you used it in your reasoning
             Leaf Disease Control Plan:
+                Get insights on how to remediate the disease effecting the crop. Take into account the crop, the disease, weather, watering plan
                 Tell the farmer what the disease is in the leaf image
-                Tell the farmer how to address it?
+                Create a date by date action plan to remediate the disease? Focus should be on remediation and not prevention. Remeber, framer already has the problem
+                Explain your rationale for the action plan. What data did you consider to come up with the plan?
+                explain your reasoning for the timing. Provide reference to the weather and moisture levels and you used it in your reasoning
         """
 
     def get_insights(self, soil_ph = 6.5, soil_moisture = 30, location = "Concord, NC",
