@@ -27,7 +27,7 @@ if "pf" in st.session_state:
 else:
     pf = PrecisionFarming.PrecisionFarming()
 
-col1, col2 = st.columns([0.3, 0.7])
+col1, col2 = st.columns([0.2, 0.8])
 
 if "loc" not in st.session_state:
     print("setting loc")

@@ -1,7 +1,8 @@
 from typing import List
 from typing_extensions import TypedDict
 import numpy as np
-
+import pprint
+import os
 from langchain import hub
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
@@ -12,11 +13,10 @@ from langchain.schema import Document
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 from langgraph.graph import END, START, StateGraph
-from guardrails import Guard
-from trulens.instrument.langchain import WithFeedbackFilterDocuments
-from trulens.core import Feedback
+from trulens.apps.langchain import WithFeedbackFilterDocuments
+from trulens.core import Feedback, TruSession
 from trulens.providers.openai import OpenAI
-from trulens.instrument.langchain import TruChain
+from trulens.apps.langchain import TruChain
 from langchain.load import dumps, loads
 
 class GradeDocuments(BaseModel):
@@ -41,7 +41,6 @@ class GraphState(TypedDict):
     web_search: str
     documents: List[str]
     groundedness: str
-
 
 class RetrievalGraph:
 
@@ -133,18 +132,23 @@ class RetrievalGraph:
             }
         )
 
+        workflow.add_edge("transform_query", "retrieve")
+
         # Compile
         self.app = workflow.compile()
+        pprint.pprint(self.app.get_graph().draw_ascii())
 
     def invoke(self, question):
+        os.environ["LANGCHAIN_TRACING_V2"] = "True"
+        os.environ["LANGCHAIN_PROJECT"] = "RetrievalGraph"
         return self.app.invoke({"question": question})["generation"]
 
 
     def retrieve(self, state):
+
         provider = OpenAI()
         f_context_relevance_score = Feedback(provider.context_relevance)
-        tru_recorder = TruChain(self.llm, app_name="RetrievalGraph", app_version="Chain1",
-                                feedbacks=[f_context_relevance_score])
+
         filtered_retriever = WithFeedbackFilterDocuments.of_retriever(
             retriever=self.retriever, feedback=f_context_relevance_score, threshold=0.75
         )
