@@ -30,8 +30,5 @@ The core engine is developed using LangChain, LangGraph, and OpenAI. The engine 
 
 ## technical details
 
-
-<img width="612" alt="image" src="https://github.com/user-attachments/assets/314a0295-8668-4cb2-80d4-c01c9e21fc27">
-
 <img width="612" alt="image" src="https://github.com/user-attachments/assets/7894187e-f9bb-4282-88e8-a722fce43de3">
 
