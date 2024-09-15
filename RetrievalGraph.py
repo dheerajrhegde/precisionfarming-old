@@ -11,6 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.schema import Document
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_upstage import UpstageGroundednessCheck
 
 from langgraph.graph import END, START, StateGraph
 from trulens.apps.langchain import WithFeedbackFilterDocuments
@@ -48,7 +49,6 @@ class RetrievalGraph:
     def __init__(self):
         # Initialize Tavily
         self.web_search_tool = TavilySearchResults(k=3)
-
         self.llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
 
         # Get access to Chroma vector store that has NC state agriculture information
@@ -60,34 +60,12 @@ class RetrievalGraph:
 
         # RAG Chain for checking relevance of retrieved documents
         prompt = hub.pull("rlm/rag-prompt")
+        print(prompt)
         self.rag_chain = prompt | self.llm | StrOutputParser()
-        system = """You are a grader assessing relevance of a retrieved document to a user question. \n 
-            If the document contains keyword(s) or semantic meaning related to the question, grade it as relevant. \n
-            Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."""
-        self.grade_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", system),
-                ("human", "Retrieved document: \n\n {document} \n\n User question: {question}"),
-            ]
-        )
-        self.structured_llm_grader = self.llm.with_structured_output(GradeDocuments)
-        #self.retrieval_grader = grade_prompt | structured_llm_grader
-
-        # Add Guardrails to grade_documents LLM call
-        """self.retrieval_grader = self.guard(
-            self.grade_prompt | self.structured_llm_grader,
-            schema={
-                "binary_score": {
-                    "type": "string",
-                    "enum": ["yes", "no"],
-                    "description": "Binary score for relevance of documents",
-                }
-            },
-        )"""
 
         # Prompt
         system = """You a question re-writer that converts an input question to a better version that is optimized \n 
-             for web search. Look at the input and try to reason about the underlying semantic intent / meaning."""
+                     for web search. Look at the input and try to reason about the underlying semantic intent / meaning."""
         re_write_prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", system),
@@ -146,17 +124,49 @@ class RetrievalGraph:
 
     def retrieve(self, state):
 
+        question = state["question"]
+        print(question)
         provider = OpenAI()
         f_context_relevance_score = Feedback(provider.context_relevance)
 
         filtered_retriever = WithFeedbackFilterDocuments.of_retriever(
             retriever=self.retriever, feedback=f_context_relevance_score, threshold=0.75
         )
-        question = state["question"]
-        # Retrieval
-        documents = filtered_retriever.get_relevant_documents(question)
-        #print(documents)
-        return {"documents": documents, "question": question}
+
+        template = """You are an AI language model assistant. Your task is to break down the larger question
+                you get into smaller subquestions to do a vector store retrieval on. 
+
+                Provide a list of subquestions that can be used to search the web for more information.
+
+                Original question: {question}"""
+        prompt_sub_q = ChatPromptTemplate.from_template(template)
+
+        from langchain_core.output_parsers import StrOutputParser
+        from langchain_openai import ChatOpenAI
+
+        generate_queries = (
+                prompt_sub_q
+                | ChatOpenAI(temperature=0)
+                | StrOutputParser()
+                | (lambda x: x.split("\n"))
+        )
+
+        #retrieval_chain = generate_queries | map(filtered_retriever.get_relevant_documents) | self.get_unique_union
+        questions = generate_queries.invoke({"question": question})
+        print("questions asked ", questions)
+
+        retrieved_docs = []
+        for question in questions:
+            docs = filtered_retriever.get_relevant_documents(question)
+            print("question", question)
+            print("docs", docs)
+            retrieved_docs.append(docs)
+
+        print("retrieved documents ...", retrieved_docs)
+        docs = self.get_unique_union(retrieved_docs)
+
+        print("documents retrieved from the vector store are", docs)
+        return {"documents": docs}
 
     def generate(self, state):
         question = state["question"]
@@ -164,8 +174,6 @@ class RetrievalGraph:
         provider = OpenAI()
         generation = self.rag_chain.invoke({"context": documents, "question": question})
 
-        from langchain_upstage import UpstageGroundednessCheck
-        import os
         groundedness_check = UpstageGroundednessCheck()
 
         request_input = {
@@ -257,5 +265,24 @@ class RetrievalGraph:
 
 if __name__ == "__main__":
     graph = RetrievalGraph()
-    state = graph.invoke("What is the best way to grow corn?")
+    state = graph.invoke("""
+        You are an agricultural pest management expert is a professional with specialized knowledge in entomology, 
+        plant pathology, and crop protection.
+
+        A farmer has come to you with a disease effeecting his/her crop. 
+        The farmer is growing corn. 
+        The farmer has noticed caterpillar insect on the crop.
+        His farm's current and next few days weather is sunny.
+        His farm's soil moisture is 30. And his irrigation plan is none. 
+
+        You need to provide the farmer with the following information:
+        1. Insights on the insect, how it effects the plant and its yield
+        2. What factors support insect habitation in your crop field
+        3. Now that the insects are present, how to remediate it? Include specific informaiton
+            - On what pesticides to use, when to apply given the weather, moisture and irrigation plan
+                - explain your reasoning for the timing. Provide reference to the weather and moisture levels and you used it in your reasoning
+                - give dates when the pesticides should be applied
+            - Where to get the pesticides from
+                - Give the websites where the farmer can buy the pesticides
+    """)
     print(state)

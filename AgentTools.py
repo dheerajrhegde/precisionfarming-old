@@ -1,22 +1,14 @@
-import os, json
-from collections import Counter
+import os
 
 import numpy as np
-import pandas as pd
 import requests
-from PIL import Image
 import keras
 from keras.preprocessing import image
 
-import chromadb
-from chromadb.utils.data_loaders import ImageLoader
-from chromadb.utils.embedding_functions import OpenCLIPEmbeddingFunction
+
 from langchain.agents import tool
 from langchain.pydantic_v1 import BaseModel, Field
-from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.prompts import PromptTemplate
-
-from collections import Counter
 
 from RetrievalGraph import RetrievalGraph
 
@@ -104,7 +96,6 @@ def predict_insect(img):
     """ Find out the insect in the image """
 
     print("Predicting insect", img, type(img))
-    print(type(image.load_img("./images/moth.jpg", target_size=(224, 224))))
     x = image.img_to_array(img)
     x = np.expand_dims(x, axis=0)
     classes = reconstructed_model_insect.predict(x)

@@ -3,7 +3,7 @@ import re
 from bs4 import BeautifulSoup
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import RecursiveUrlLoader, WebBaseLoader
+from langchain_community.document_loaders import RecursiveUrlLoader, WebBaseLoader, PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_community.vectorstores.utils import filter_complex_metadata
 from langchain_openai import OpenAIEmbeddings
@@ -14,15 +14,16 @@ class CropVectorStore:
         return re.sub(r"\n\n+", "\n\n", soup.text).strip()
 
     def create_vector_store(self):
-        loader = RecursiveUrlLoader("https://soybeans.ces.ncsu.edu/", extractor=self.bs4_extractor)
+        loader = PyPDFLoader("guides/soybean.pdf") #RecursiveUrlLoader("https://soybeans.ces.ncsu.edu/", extractor=self.bs4_extractor)
         docs = loader.load()
         print("sybeans.ces.ncsu.edu", len(docs))
-        loader = RecursiveUrlLoader("https://corn.ces.ncsu.edu/", extractor=self.bs4_extractor)
+        loader = PyPDFLoader("guides/corn.pdf") #RecursiveUrlLoader("https://corn.ces.ncsu.edu/", extractor=self.bs4_extractor)
         docs = docs + loader.load()
         print("sybeans.ces.ncsu.edu + corn.ces.ncsu.edu", len(docs))
-        loader = RecursiveUrlLoader("https://cotton.ces.ncsu.edu/", extractor=self.bs4_extractor)
+        loader = PyPDFLoader("guides/cotton.pdf") #RecursiveUrlLoader("https://cotton.ces.ncsu.edu/", extractor=self.bs4_extractor)
         docs = docs + loader.load()
         print("sybeans.ces.ncsu.edu + corn.ces.ncsu.edu + cottton.ces.ncsu.edu", len(docs))
+
 
         text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=1024, chunk_overlap=128

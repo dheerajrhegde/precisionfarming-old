@@ -67,7 +67,8 @@ class PrecisionFarming:
     def __init__(self):
         self.model = ChatOpenAI(model='gpt-4o', openai_api_key=os.getenv("OPENAI_API_KEY"), )
         self.tool_list = [tools.decrease_ph, tools.get_weather_data,
-                     tools.get_crop_info, tools.calculate_water_needed, tools.tackle_insect, tools.tackle_disease]
+                     tools.get_crop_info, tools.calculate_water_needed, tools.tackle_insect, tools.tackle_disease,
+                          tools.increase_ph]
         self.model.bind_tools(self.tool_list)
         self.prompt = """
             You are an Expert framing assistant. You will be given the following information
