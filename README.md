@@ -37,7 +37,7 @@ The anchor for the graph is a function calling agentic workflow that uses Open A
 
 ### Tools
 
-decrease_ph and increase_ph - These are simple python functions annotated with @tool and does a predefined mathematical calculation on the about of chemicals to use to alter the PH to desired levels. 
+<p> decrease_ph and increase_ph - These are simple python functions annotated with @tool and does a predefined mathematical calculation on the about of chemicals to use to alter the PH to desired levels. <p>
 
 get_weather_data - This uses the "weatherapi" API to get 7 day forecast for the location provided
 
@@ -58,7 +58,7 @@ Transform Query -
 
 ### Image Classification - Insect and Leaf (CNN using Tensorflow)
 
-
+fine tuning of the ImageNet with softmax in last layer for multiclass classification. 
 
 ## Final response
 <img width="1117" alt="image" src="https://github.com/user-attachments/assets/fb76a47c-2f11-4896-9921-7174af7a58bd">
