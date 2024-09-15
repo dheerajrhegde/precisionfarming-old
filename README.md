@@ -28,7 +28,10 @@ The core engine is developed using LangChain, LangGraph, and OpenAI. The engine 
 - Searches the web incase relevent infromation is not available in the vector store
 - Finally, puts its all toegther into a actionable plan for the farmer
 
-## technical details
+## Technical details
+The anchor for the graph is a function calling agentic workflow that uses Open AI and LangGraph. The graph has at its disposal few tools that it can decide to call based on the need. And once it has all the informationm, it puts together a structured markdown response to be given back to the user.
 
 <img width="612" alt="image" src="https://github.com/user-attachments/assets/7894187e-f9bb-4282-88e8-a722fce43de3">
+
+### Key Decision: ### The  
 
