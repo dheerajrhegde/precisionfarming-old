@@ -38,9 +38,13 @@ The anchor for the graph is a function calling agentic workflow that uses Open A
 ### Tools
 
 decrease_ph and increase_ph - These are simple python functions annotated with @tool and does a predefined mathematical calculation on the about of chemicals to use to alter the PH to desired levels. 
+
 get_weather_data - This uses the "weatherapi" API to get 7 day forecast for the location provided
+
 calculate_water_needed - Simple python function that tells us how much water we need to get the soil moisture level to where we need it to be.
+
 get_crop_info - generic funtion that uses the retrieval graph to answer questions that are not addressed by earlier defiend tools. Relies first on the crop production guides and then on web search
+
 tackle_insect, tackle_disease - uses the retrieval graph to get needed information from the crop production guides that are chunked and stored in the vector database. Falls back on websearch if needed.
 
 ### Nodes in retreival graph
