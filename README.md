@@ -49,11 +49,16 @@ tackle_insect, tackle_disease - uses the retrieval graph to get needed informati
 
 ### Nodes in retreival graph
 
-Retreive - 
+Retreive - Uses multi query translation to break down larger and complex queries into simple questions to do a vector search on. Uses metadata filtering to only get chunks from the guide that is related to the crop the farmer is growing. 
+
 Context relevence - 
+
 Web Search - 
+
 Generate Response - 
+
 Response Grounded - 
+
 Transform Query - 
 
 ### Image Classification - Insect and Leaf (CNN using Tensorflow)
