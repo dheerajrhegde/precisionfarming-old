@@ -33,5 +33,7 @@ The anchor for the graph is a function calling agentic workflow that uses Open A
 
 <img width="612" alt="image" src="https://github.com/user-attachments/assets/7894187e-f9bb-4282-88e8-a722fce43de3">
 
-### Key Decision: ### The  
+** Key Decision: ** The controlling is an agentic tool based workflow with just the nodes to call tools and LLM. We decided to go with this approach instead of a well defined graph and nodes to ensure that the core graph can be chatty and refine the response as needed to meet the expectatios of the prompt. In contrary, the retrieval graph is well defined with specific nodes and conditional edges that takes a task from START to END. Retrieval graph was define in that way since we knew exactly how to get a well grounded intermediate response.  
+
+
 
